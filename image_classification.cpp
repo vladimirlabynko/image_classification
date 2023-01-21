@@ -82,20 +82,19 @@ int main(int argc, const char *argv[]) {
       input_tensor[0][2] = input_tensor[0][2].sub_(0.406).div_(0.225);
 
 
+
       torch::Tensor out_tensor = module.forward({input_tensor}).toTensor();
 
       auto results = out_tensor.sort(-1, true);
       auto softmaxs = std::get<0>(results)[0].softmax(0);
       auto indexs = std::get<1>(results)[0];
 
-      for (int i = 0; i < kTOP_K; ++i) {
-        auto idx = indexs[i].item<int>();
-        std::cout << "    ============= Top-" << i + 1
-                  << " =============" << std::endl;
+      
+        auto idx = indexs[0].item<int>();
         std::cout << "    Label:  " << labels[idx] << std::endl;
         std::cout << "    With Probability:  "
-                  << softmaxs[i].item<float>() * 100.0f << "%" << std::endl;
-      }
+                  << softmaxs[0].item<float>() * 100.0f << "%" << std::endl;
+      
 
     } else {
       std::cout << "Can't load the image, please check your path." << std::endl;

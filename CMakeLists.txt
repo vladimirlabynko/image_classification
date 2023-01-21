@@ -1,19 +1,22 @@
-cmake_minimum_required(VERSION 3.1)
+cmake_minimum_required(VERSION 3.1.0)
+
 project(image_classification)
 
-set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-add_definitions(-D_GLIBCXX_USE_CXX11_ABI=0)
+set(CMAKE_PREFIX_PATH /home/vladimir/Work/libtorch)
 
+find_package(OpenCV REQUIRED)
+find_package(Torch REQUIRED)
+add_executable(${PROJECT_NAME} "image_classification.cpp")
 
+message(STATUS "OpenCV library status:")
+message(STATUS " config: ${OPENCV_DIR}")
+message(STATUS " version: ${OpenV_VERSION}")
+message(STATUS " libraries: ${OpenCV_LIBS}")
+message(STATUS " include_path: ${OpenCV_INCLUDE_DIRS}")
 
-find_package( OpenCV REQUIRED )
+message(STATUS "Torch library status:")
+message(STATUS " include_path: ${TORCH_INCLUDE_DIRS}")
+message(STATUS " TORCHLIB: ${TORCH_LIBRARIES}")
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ")
-
-include_directories(image_classification ${OpenCV_INCLUDE_DIRS} )
-
-add_executable(image_classification image_classification.cpp)
-target_link_libraries(image_classification ${OpenCV_LIBS} )
-
-message(YOBA_LIBS ${OpenCV_LIBS} )
+target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS})
+target_link_libraries(${PROJECT_NAME} ${TORCH_LIBRARIES})

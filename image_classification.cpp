@@ -1,48 +1,105 @@
-#include <iostream>
-#include <opencv4/opencv2/opencv.hpp>
-#include <stdio.h>
+// One-stop header.
 #include <torch/script.h>
 
-using namespace std;
-using namespace cv;
+#include <cmath>
+#include <iostream>
+#include <memory>
+#include <opencv2/highgui/highgui.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/opencv.hpp>
+#include <string>
+#include <vector>
 
-int main(int argc, char** argv) {
-  // Load pre-trained model
-  torch::jit::script::Module model = torch::jit::load("mobilenet_v2-b0353104.pt");
+#define kIMAGE_SIZE 224
+#define kCHANNELS 3
+#define kTOP_K 3
 
-  // Prepare image for classification
-  if (argc != 2) {
-        printf("usage: DisplayImage.out <Image_Path>\n");
-        return -1;
+bool LoadImage(std::string file_name, cv::Mat &image) {
+  image = cv::imread(file_name);  // CV_8UC3
+  if (image.empty() || !image.data) {
+    return false;
+  }
+  cv::cvtColor(image, image, cv::COLOR_BGR2RGB);
+  std::cout << "== image size: " << image.size() << " ==" << std::endl;
+
+  // scale image to fit
+  cv::Size scale(kIMAGE_SIZE, kIMAGE_SIZE);
+  cv::resize(image, image, scale);
+  std::cout << "== simply resize: " << image.size() << " ==" << std::endl;
+
+  // convert [unsigned int] to [float]
+  image.convertTo(image, CV_32FC3, 1.0f / 255.0f);
+
+  return true;
+}
+
+bool LoadImageNetLabel(std::string file_name,
+                       std::vector<std::string> &labels) {
+  std::ifstream ifs(file_name);
+  if (!ifs) {
+    return false;
+  }
+  std::string line;
+  while (std::getline(ifs, line)) {
+    labels.push_back(line);
+  }
+  return true;
+}
+
+int main(int argc, const char *argv[]) {
+  if (argc != 3) {
+    std::cerr << "Usage: classifier <path-to-exported-script-module> "
+                 "<path-to-lable-file>"
+              << std::endl;
+    return -1;
+  }
+
+  torch::jit::script::Module module = torch::jit::load(argv[1]);
+
+  std::cout << "== Model [" << argv[1] << "] loaded!\n";
+  std::vector<std::string> labels;
+  if (LoadImageNetLabel(argv[2], labels)) {
+    std::cout << "== Label loaded! Let's try it\n";
+  } else {
+    std::cerr << "Please check your label file path." << std::endl;
+    return -1;
+  }
+
+  std::string file_name = "";
+  cv::Mat image;
+  while (true) {
+    std::cout << "== Input image path: [enter Q to exit]" << std::endl;
+    std::cin >> file_name;
+    if (file_name == "Q") {
+      break;
     }
-    Mat image;
-    image = imread(argv[1], 1);
-    if (!image.data) {
-        printf("No image data \n");
-        return -1;
+    if (LoadImage(file_name, image)) {
+      auto input_tensor = torch::from_blob(
+          image.data, {1, kIMAGE_SIZE, kIMAGE_SIZE, kCHANNELS});
+      input_tensor = input_tensor.permute({0, 3, 1, 2});
+      input_tensor[0][0] = input_tensor[0][0].sub_(0.485).div_(0.229);
+      input_tensor[0][1] = input_tensor[0][1].sub_(0.456).div_(0.224);
+      input_tensor[0][2] = input_tensor[0][2].sub_(0.406).div_(0.225);
+
+
+      torch::Tensor out_tensor = module.forward({input_tensor}).toTensor();
+
+      auto results = out_tensor.sort(-1, true);
+      auto softmaxs = std::get<0>(results)[0].softmax(0);
+      auto indexs = std::get<1>(results)[0];
+
+      for (int i = 0; i < kTOP_K; ++i) {
+        auto idx = indexs[i].item<int>();
+        std::cout << "    ============= Top-" << i + 1
+                  << " =============" << std::endl;
+        std::cout << "    Label:  " << labels[idx] << std::endl;
+        std::cout << "    With Probability:  "
+                  << softmaxs[i].item<float>() * 100.0f << "%" << std::endl;
+      }
+
+    } else {
+      std::cout << "Can't load the image, please check your path." << std::endl;
     }
-  Mat image_tensor = image.clone().reshape(1, image.rows * image.cols * 3);
-  torch::Tensor tensor_image = torch::from_blob(image_tensor.data, {1, image_tensor.total() * image_tensor.channels()});
-  tensor_image = tensor_image.permute({0, 3, 1, 2});
-  tensor_image = tensor_image.to(torch::kFloat);
-
-  // Normalize image
-  tensor_image[0][0] = tensor_image[0][0].sub(0.485).div(0.229);
-  tensor_image[0][1] = tensor_image[0][1].sub(0.456).div(0.224);
-  tensor_image[0][2] = tensor_image[0][2].sub(0.406).div(0.225);
-
-  // Forward pass
-  auto output = model.forward({tensor_image}).toTensor();
-
-  // Get class with highest probability
-  auto prob = torch::softmax(output, 1);
-  torch::Tensor prob_max;
-  torch::Tensor class_index;
-  std::tie(prob_max, class_index) = prob.max(1);
-
-  // Print class name
-  int class_idx = class_index[0].item<int>();
-  cout << "Class: " << class_idx << endl;
-
+  }
   return 0;
 }

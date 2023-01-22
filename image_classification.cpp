@@ -46,25 +46,28 @@ bool LoadImageNetLabel(std::string file_name,
   return true;
 }
 
+std::string model_name="../resnet18.pt";
+
+std::string labels_txt="../label.txt";
+
 int main(int argc, const char *argv[]) {
-  if (argc != 3) {
-    std::cerr << "Usage: classifier <path-to-exported-script-module> "
-                 "<path-to-lable-file>"
-              << std::endl;
-    return -1;
-  }
-
-  torch::jit::script::Module module = torch::jit::load(argv[1]);
-
-  std::cout << "== Model [" << argv[1] << "] loaded!\n";
+  // if (argc != 3) {
+  //   std::cerr << "Usage: classifier <path-to-exported-script-module> "
+  //                "<path-to-lable-file>"
+  //             << std::endl;
+  //   return -1;
+  // }
+  
+  torch::jit::script::Module module = torch::jit::load(model_name);
+  
+  std::cout << "== Model [" << model_name << "] loaded!\n";
   std::vector<std::string> labels;
-  if (LoadImageNetLabel(argv[2], labels)) {
+  if (LoadImageNetLabel(labels_txt, labels)) {
     std::cout << "== Label loaded! Let's try it\n";
   } else {
     std::cerr << "Please check your label file path." << std::endl;
     return -1;
   }
-
   std::string file_name = "";
   cv::Mat image;
   while (true) {
@@ -88,7 +91,6 @@ int main(int argc, const char *argv[]) {
       auto results = out_tensor.sort(-1, true);
       auto softmaxs = std::get<0>(results)[0].softmax(0);
       auto indexs = std::get<1>(results)[0];
-
       
         auto idx = indexs[0].item<int>();
         std::cout << "    Label:  " << labels[idx] << std::endl;

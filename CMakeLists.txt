@@ -8,6 +8,8 @@ set(CMAKE_PREFIX_PATH /home/vladimir/Work/libtorch)
 
 find_package(OpenCV REQUIRED)
 find_package(Torch REQUIRED)
+find_package(Boost REQUIRED)
+include_directories(${Boost_INCLUDE_DIRS})
 add_executable(${PROJECT_NAME} "image_classification.cpp")
 
 message(STATUS "OpenCV library status:")
@@ -22,3 +24,4 @@ message(STATUS " TORCHLIB: ${TORCH_LIBRARIES}")
 
 target_link_libraries(${PROJECT_NAME} ${OpenCV_LIBS})
 target_link_libraries(${PROJECT_NAME} ${TORCH_LIBRARIES})
+target_link_libraries(${PROJECT_NAME} ${Boost_LIBRARIES})

@@ -1,6 +1,6 @@
 // One-stop header.
 #include <torch/script.h>
-
+#include <curl/curl.h>
 #include <cmath>
 #include <iostream>
 #include <memory>
@@ -18,12 +18,6 @@ using namespace boost::asio;
 #define kTOP_K 3
 
 // Function to handle the image path
-void handleImage(std::string path) {
-    std::cout << "Received image path: " << path << std::endl;
-    // Add your code here to handle the image
-}
-
-
 bool LoadImage(std::string file_name, cv::Mat &image) {
   image = cv::imread(file_name);  // CV_8UC3
   if (image.empty() || !image.data) {
@@ -43,6 +37,52 @@ bool LoadImage(std::string file_name, cv::Mat &image) {
   return true;
 }
 
+void handleImage(std::string url) {
+    // Create a file to save the image
+    std::string file_name = "image.jpg";
+    FILE *fp = fopen(file_name.c_str(), "wb");
+    if (!fp) {
+        std::cout << "Failed to open file: " << file_name << std::endl;
+        return;
+    }
+
+    // Initialize cURL
+    CURL *curl = curl_easy_init();
+    if (!curl) {
+        std::cout << "Failed to initialize cURL" << std::endl;
+        fclose(fp);
+        return;
+    }
+
+    // Set the URL and other options
+    curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
+    curl_easy_setopt(curl, CURLOPT_WRITEDATA, fp);
+    curl_easy_setopt(curl, CURLOPT_FAILONERROR, 1L);
+
+    // Perform the request
+    CURLcode res = curl_easy_perform(curl);
+    if (res != CURLE_OK) {
+        std::cout << "Failed to download image from url: " << url
+                  << ", error: " << curl_easy_strerror(res) << std::endl;
+        curl_easy_cleanup(curl);
+        fclose(fp);
+        return;
+    }
+
+    // Cleanup
+    curl_easy_cleanup(curl);
+    fclose(fp);
+
+    
+    cv::Mat image;
+    if(!LoadImage(file_name,image)){
+        std::cout<<"Failed to load image!"<<std::endl;
+        return ;
+    }
+   
+}
+
+
 bool LoadImageNetLabel(std::string file_name,
                        std::vector<std::string> &labels) {
   std::ifstream ifs(file_name);
@@ -61,13 +101,7 @@ std::string model_name="../resnet18.pt";
 std::string labels_txt="../label.txt";
 
 int main(int argc, const char *argv[]) {
-  // if (argc != 3) {
-  //   std::cerr << "Usage: classifier <path-to-exported-script-module> "
-  //                "<path-to-lable-file>"
-  //             << std::endl;
-  //   return -1;
-  // }
-  // Initialize the server
+
     io_service service;
     ip::tcp::endpoint ep(ip::tcp::v4(), 12345);
     ip::tcp::acceptor acc(service, ep);
@@ -101,7 +135,8 @@ int main(int argc, const char *argv[]) {
             
             // Send the image path to the function
             handleImage(imagePath);
-            if (LoadImage(imagePath, image)) {
+            std::string file_name = "image.jpg";
+            if (LoadImage(file_name, image)) {
             auto input_tensor = torch::from_blob(
           image.data, {1, kIMAGE_SIZE, kIMAGE_SIZE, kCHANNELS});
           input_tensor = input_tensor.permute({0, 3, 1, 2});

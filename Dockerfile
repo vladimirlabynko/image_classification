@@ -14,6 +14,7 @@ RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
          unzip \
          vim \
          git \
+         curl \
          libopencv-dev \
          libboost-all-dev 
 
@@ -25,17 +26,18 @@ RUN unzip -o libtorch.zip
 ENV LIBTORCH /app/libtorch
 ENV LD_LIBRARY_PATH /app/libtorch/lib:$LD_LIBRARY_PATH
 
-
+RUN apt-get install -y libcurl4-openssl-dev
 # Install the necessary dependencies
 
 COPY ["CMakeLists.txt","image_classification.cpp","label.txt","resnet18.pt","./"] 
             
-# Change the working directory
-
+# Change the working director
 
 # Build the project
 RUN mkdir build && cd build && cmake .. -DCMAKE_PREFIX_PATH=$PWD/../libtorch .. && make 
 
-RUN cd build 
+WORKDIR /app/build
+
+RUN chmod +x image_classification
 
 CMD ["./image_classification"]

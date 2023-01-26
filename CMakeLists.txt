@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.1.0)
 
 project(image_classification)
 
-set(CMAKE_PREFIX_PATH /home/vladimir/Work/libtorch)
+#set(CMAKE_PREFIX_PATH /home/vladimir/Work/libtorch)
 
 find_package(OpenCV REQUIRED)
 find_package(Torch REQUIRED)

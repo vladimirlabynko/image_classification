@@ -40,7 +40,7 @@ Class: mask
 
 ## Docker 
 
-To run docker you''ll need next steps in terminal:
+To run docker you'll need next steps in terminal:
 1)Clone docker : 
 ```bash
 docker push 5nevil/image_classification:v2
@@ -57,5 +57,21 @@ Wait a seconds and you'll see a predicted class like this :
 ```bash
 Class: mask
 ```
-
-That all!
+### If you want to classify local files you'll need next steps in terminal: 
+1)Clone docker : 
+```bash
+docker push 5nevil/image_classification:v1
+```
+2)Run docker , for example with command :
+```bash 
+docker run --rm -it -p 8020:12345  -v /path/to/local/images:/images 5nevil/image_classification:v1
+```
+3) Then when you in docker run commands :
+```bash 
+cd build 
+./image_classification
+```
+4) Open another terminal and write next comaand : 
+```bash
+curl -X POST -d "/images/yorfile.jpg(png...)" http://0.0.0.0:8020
+```
